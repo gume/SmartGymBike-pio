@@ -25,7 +25,7 @@ WiFiClient espClient;
 PubSubClient client(espClient);
 
 BikeStat* BikeStat::instance = nullptr;
-String BikeStat::bikeRikeVersion = "BikeRike 0.12";
+String BikeStat::bikeRikeVersion = "BikeRike 0.13";
 
 BikeLED bikeLED;
 WS2812FX *BikeLED::ws2812fx = new WS2812FX(3, 25, NEO_GRB + NEO_KHZ800);
@@ -67,6 +67,16 @@ void pressHandler(BfButton *btn, BfButton::press_pattern_t pattern) {
   }
   else if (btn->getPin() == PIN_BTNQ) {
     bikeDisplay.screenNext(true);
+  }
+  else if (btn->getPin() == PIN_BTNU) {
+    if (pattern == BfButton::SINGLE_PRESS) smartGymBike.resistanceUp();
+    else if (pattern == BfButton::DOUBLE_PRESS) smartGymBike.resistanceLevelUp();
+    else smartGymBike.resistanceSet(SmartGymBike::RES_MAX);
+  }
+  else if (btn->getPin() == PIN_BTND) {
+    if (pattern == BfButton::SINGLE_PRESS) smartGymBike.resistanceDown();
+    else if (pattern == BfButton::DOUBLE_PRESS) smartGymBike.resistanceLevelDown();
+    else smartGymBike.resistanceSet(SmartGymBike::RES_MIN);
   }
   //digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
 }
@@ -123,8 +133,10 @@ void setup() {
   pinMode(PIN_SPEED, INPUT_PULLUP);
   attachInterrupt(PIN_SPEED, cadenceIRQ, FALLING);
 
-  buttonEnter.onPress(pressHandler).onDoublePress(pressHandler);
-  buttonUser.onPress(pressHandler).onDoublePress(pressHandler);
+  buttonEnter.onPress(pressHandler).onDoublePress(pressHandler).onPressFor(pressHandler, 1000);;
+  buttonUser.onPress(pressHandler).onDoublePress(pressHandler).onPressFor(pressHandler, 1000);;
+  buttonUp.onPress(pressHandler).onDoublePress(pressHandler).onPressFor(pressHandler, 1000);;
+  buttonDown.onPress(pressHandler).onDoublePress(pressHandler).onPressFor(pressHandler, 1000);;
 }
 
 void loop() {

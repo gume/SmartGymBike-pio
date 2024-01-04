@@ -40,7 +40,7 @@ void SmartGymBike::resistanceStop() {
   digitalWrite(PIN_MP, LOW);
   digitalWrite(PIN_MN, LOW);
   targetResistance = analogRead(PIN_POS);
-  setResistance(targetResistance);
+  resistanceSet(targetResistance);
   targetReached = true;
   
   //readResistance(); // readLevel reads resistance as well
@@ -48,16 +48,28 @@ void SmartGymBike::resistanceStop() {
 }
 
 void SmartGymBike::resistanceUp(int step) {
+  resistanceSet(targetResistance + step);
+}
 
-  setResistance(targetResistance + step);
+void SmartGymBike::resistanceLevelUp() {
+  int lvl = readLevel();
+  if (lvl == PRESETLEVELS -1) return;
+  int res = presetLevels[lvl+1];
+  resistanceSet(res);
 }
 
 void SmartGymBike::resistanceDown(int step) {
-
-  setResistance(targetResistance - step);
+  resistanceSet(targetResistance - step);
 }
 
-void SmartGymBike::setResistance(int res) {
+void SmartGymBike::resistanceLevelDown() {
+  int lvl = readLevel();
+  if (lvl == 0) return;
+  int res = presetLevels[lvl-1];
+  resistanceSet(res);
+}
+
+void SmartGymBike::resistanceSet(int res) {
 
   targetResistance = res;
   if (targetResistance < RES_MIN) targetResistance = RES_MIN;
@@ -130,17 +142,17 @@ void SmartGymBike::loop() {
 
 void SmartGymBike::setLevel(uint8_t level) {
   if (level > PRESETLEVELS-1) level = PRESETLEVELS-1;
-  setResistance(presetLevels[level]);
+  resistanceSet(presetLevels[level]);
 }
 
-uint8_t SmartGymBike::readLevel() {
+int SmartGymBike::readLevel() {
   int lvl = whichLevel(readResistance());
   BikeStat& bikeStat = BikeStat::getInstance();
   bikeStat.bikeLevel = lvl;
   return lvl;
 }
 
-uint8_t SmartGymBike::whichLevel(int r) {
+int SmartGymBike::whichLevel(int r) {
   int mi = 0;
   
   for (int i=0; i<PRESETLEVELS; i++) {

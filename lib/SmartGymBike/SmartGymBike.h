@@ -20,22 +20,24 @@ public:
 
   // Resistance with fine resolution
   void resistanceUp(int step = 100);
+  void resistanceLevelUp();
   void resistanceDown(int step = 100);
-  void setResistance(int);
+  void resistanceLevelDown();
+  void resistanceSet(int);
   void resistanceStop();
   
   int readResistance();
 
   // Level is a corse resolution for resistance
   void setLevel(uint8_t);
-  uint8_t readLevel();
-  uint8_t whichLevel(int);
+  int readLevel();
+  int whichLevel(int);
 
   int estimatePower(int cadence, int resistence);
     
   void loop();
 
-  const static int RES_MAX = 3200;  // Very instable at 4000
+  const static int RES_MAX = 3200;  
   const static int RES_MIN = 100;
 
   volatile static bool pedalPush;
