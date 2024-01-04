@@ -4,20 +4,23 @@
 #include <WS2812FX.h>
 
 #define BIKELED_NONE    0
-#define BIKELED_BREATH  1
-#define BIKELED_RUNNING 2
+#define BIKELED_STOP    1
+#define BIKELED_BIKE    2
 
 class BikeLED {
 public:
     BikeLED();
     void setup();
     void loop();
-
-    void breath(int color);
-    void running(int cadenceP, int levelP);
+    void setMode(int mode);
 
     static WS2812FX *ws2812fx;
 
 private:
     int bikeLED_mode;
+    bool change;
+
+    bool okWiFi;
+    bool okMQTT;
+    bool openCP;
 };

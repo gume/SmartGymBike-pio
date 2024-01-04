@@ -177,12 +177,16 @@ void BikeDisplay::aboutScreen() {
   display->setTextSize(1);
   display->setCursor(0,0);
   display->print("SW");
-  display->setCursor(20,0);
+  display->setCursor(28,0);
   display->print(bikeStat.bikeRikeVersion);
   display->setCursor(0,10);
   display->print("IP");
-  display->setCursor(20,10);
+  display->setCursor(28,10);
   display->print(WiFi.localIP().toString());
+  display->setCursor(0,20);
+  display->print("MQTT");
+  display->setCursor(28,20);
+  display->print(bikeStat.mqttBroker);
 }
 
 void BikeDisplay::levelSetScreenInit() {

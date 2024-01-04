@@ -25,7 +25,7 @@ WiFiClient espClient;
 PubSubClient client(espClient);
 
 BikeStat* BikeStat::instance = nullptr;
-String BikeStat::bikeRikeVersion = "BikeRike 0.13";
+String BikeStat::bikeRikeVersion = "BikeRike 0.14";
 
 BikeLED bikeLED;
 WS2812FX *BikeLED::ws2812fx = new WS2812FX(3, 25, NEO_GRB + NEO_KHZ800);
@@ -89,14 +89,23 @@ void setup() {
   Serial.println("FileSystem start");
   LittleFS.begin(FORMAT_LITTLEFS_IF_FAILED);
 
+  // Check Service button, if it is down, erase the config
+  if (digitalRead(PIN_BTNS) == 0) {
+    LittleFS.format();
+  }
+
   Serial.println("WiFiManager start");
   ESPAsync_WiFiManager = new ESPAsync_WiFiManager_Lite();
   ESPAsync_WiFiManager->setConfigPortal("SmarDzsimBajk", "sportolj123");
   ESPAsync_WiFiManager->setConfigPortalChannel(0);
   ESPAsync_WiFiManager->begin("smartgymbike");
 
+  BikeStat& bikeStat = BikeStat::getInstance();
+  bikeStat.mqttBroker = myMenuItems[0].pdata;
+  bikeStat.mqttBrokerPort = String(myMenuItems[1].pdata).toInt();
+
   bikeLED.setup();
-  bikeLED.breath(0x0000ff); // Blue
+  bikeLED.setMode(BIKELED_STOP);
 
   bikeDisplay.setup();
   bikeDisplay.toast("Welc\nome!", 3000); 
@@ -139,7 +148,11 @@ void setup() {
   buttonDown.onPress(pressHandler).onDoublePress(pressHandler).onPressFor(pressHandler, 1000);;
 }
 
+uint32_t lastSysCheck = 0;
+
 void loop() {
+  uint32_t now = millis();
+
   ESPAsync_WiFiManager->run();
 
   bikeLED.loop();
@@ -155,6 +168,19 @@ void loop() {
   ArduinoOTA.handle();
 
   smartGymBike.loop();
+
+  BikeStat& bikeStat = BikeStat::getInstance();
+
+  // Check Systen status
+  if (now - lastSysCheck > 500) {
+    // Chceck WiFi
+    bikeStat.okWiFi = (WiFi.status() == WL_CONNECTED);
+    // Check MQTT
+    bikeStat.okMQTT = true;
+    // Check Config Portal
+    bikeStat.openCP = ESPAsync_WiFiManager->isConfigMode();
+    lastSysCheck = now;
+  }
  
   //digitalWrite(LED_BUILTIN, !digitalRead(PIN_BTND));
 }

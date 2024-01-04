@@ -44,7 +44,7 @@
 char MQTT_SERVER     [MQTT_SERVER_LEN + 1]        = "mqtt.home";
 char MQTT_SERVERPORT [MQTT_SERVERPORT_LEN + 1]    = "1883";     //1883, or 8883 for SSL
 char MQTT_USERNAME   [MQTT_USERNAME_LEN + 1]      = "";
-char MQTT_PASSWORD   [MQTT_PASSWORD_LEN + 1]           = "";
+char MQTT_PASSWORD   [MQTT_PASSWORD_LEN + 1]      = "";
 
 MenuItem myMenuItems [] =
 {

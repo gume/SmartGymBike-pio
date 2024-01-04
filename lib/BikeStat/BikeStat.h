@@ -12,6 +12,13 @@ public:
     int bikeResistance;
     static String bikeRikeVersion;
 
+    // System parameters
+    bool okWiFi;
+    bool okMQTT;
+    bool openCP;
+    String mqttBroker;
+    int mqttBrokerPort;
+
     // Function to get the instance of the singleton class
     static BikeStat& getInstance() {
         // If the instance doesn't exist, create one
@@ -30,6 +37,10 @@ private:
         bikeCadence = 0;
         bikeRevs = 0;
         bikeResistance = 0;
+
+        okWiFi = false;
+        okMQTT = false;
+        openCP = false;
     }
 
     // Private destructor to prevent deletion of the instance
