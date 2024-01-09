@@ -23,4 +23,7 @@ private:
     bool okWiFi;
     bool okMQTT;
     bool openCP;
+
+    int revs;
+    uint32_t lastRev;
 };

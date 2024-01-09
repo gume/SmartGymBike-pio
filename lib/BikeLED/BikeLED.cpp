@@ -31,9 +31,11 @@ void BikeLED::loop() {
         change = true;
         openCP = bikeStat.openCP;
     }
+    if (revs != bikeStat.bikeRevs) {
+        change = true;
+    }
 
     if (change) {
-        digitalWrite(LED_BUILTIN, HIGH);
         if (bikeLED_mode == BIKELED_NONE) {
             ws2812fx->clear();
             ws2812fx->stop();
@@ -48,15 +50,29 @@ void BikeLED::loop() {
             } else {
                 ws2812fx->setSegment(0, 0, 2, FX_MODE_BREATH, BLUE,  100, GAMMA);
             }
+            ws2812fx->setBrightness(64);
             ws2812fx->start();
         }
         else if (bikeLED_mode == BIKELED_BIKE) {
-            //
-        }
+            if (revs != bikeStat.bikeRevs) {
+                auto c = PURPLE;
+                if (bikeStat.bikeCadence >= 50) c = CYAN;
+                if (bikeStat.bikeCadence >= 70) c = GREEN;
 
+                ws2812fx->setSegment(0, 0, 2, FX_MODE_STATIC, c,  50, (uint8_t) (GAMMA || FADE_FAST));
+                ws2812fx->setBrightness(32);
+                ws2812fx->start();
+                revs = bikeStat.bikeRevs;
+                lastRev = millis();
+            }
+        }
         change = false;
     } else {
-        digitalWrite(LED_BUILTIN, LOW);
+        if (bikeLED_mode == BIKELED_BIKE) {
+            int br = 64 - (millis() - lastRev) / 10;
+            if (br < 0) br = 0;
+            ws2812fx->setBrightness(br);
+        }
     }
 
     ws2812fx->service();

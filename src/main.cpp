@@ -10,6 +10,8 @@
 #include <BfButton.h>
 #include <ESPAsyncWebServer.h>
 #include <ArduinoOTA.h>
+#include "EspMQTTClient.h"
+#include <HAMqtt.h>
 
 #include "BikeStat.h"
 #include "BikeDisplay.h"
@@ -21,11 +23,14 @@
 #define FORMAT_LITTLEFS_IF_FAILED true
 
 ESPAsync_WiFiManager_Lite* ESPAsync_WiFiManager;
-WiFiClient espClient;
-PubSubClient client(espClient);
+//WiFiClient espClient;
+//PubSubClient client(espClient);
+EspMQTTClient *client;
+HAMqttDevice *haDevice;
+HAMqttEntity *haEntity;
 
 BikeStat* BikeStat::instance = nullptr;
-String BikeStat::bikeRikeVersion = "BikeRike 0.14";
+String BikeStat::bikeRikeVersion = "BikeRike 0.21";
 
 BikeLED bikeLED;
 WS2812FX *BikeLED::ws2812fx = new WS2812FX(3, 25, NEO_GRB + NEO_KHZ800);
@@ -81,6 +86,11 @@ void pressHandler(BfButton *btn, BfButton::press_pattern_t pattern) {
   //digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
 }
 
+void onConnectionEstablished() {
+  // sends the configuration payload on the configuration topic.
+  client->publish(haEntity->getDiscoveryTopic(), haEntity->getConfigPayload(), true);
+}
+
 void setup() {
   Serial.begin(115200);
 
@@ -103,12 +113,14 @@ void setup() {
   BikeStat& bikeStat = BikeStat::getInstance();
   bikeStat.mqttBroker = myMenuItems[0].pdata;
   bikeStat.mqttBrokerPort = String(myMenuItems[1].pdata).toInt();
+  bikeStat.mqttUser = myMenuItems[2].pdata;
+  bikeStat.mqttPassword = myMenuItems[3].pdata;
 
   bikeLED.setup();
   bikeLED.setMode(BIKELED_STOP);
 
   bikeDisplay.setup();
-  bikeDisplay.toast("Welc\nome!", 3000); 
+  bikeDisplay.toast("Welc\nome!", 3000);
 
   ArduinoOTA
     .onStart([]() {
@@ -142,13 +154,32 @@ void setup() {
   pinMode(PIN_SPEED, INPUT_PULLUP);
   attachInterrupt(PIN_SPEED, cadenceIRQ, FALLING);
 
-  buttonEnter.onPress(pressHandler).onDoublePress(pressHandler).onPressFor(pressHandler, 1000);;
-  buttonUser.onPress(pressHandler).onDoublePress(pressHandler).onPressFor(pressHandler, 1000);;
-  buttonUp.onPress(pressHandler).onDoublePress(pressHandler).onPressFor(pressHandler, 1000);;
-  buttonDown.onPress(pressHandler).onDoublePress(pressHandler).onPressFor(pressHandler, 1000);;
+  buttonEnter.onPress(pressHandler).onDoublePress(pressHandler).onPressFor(pressHandler, 1000);
+  buttonUser.onPress(pressHandler).onDoublePress(pressHandler).onPressFor(pressHandler, 1000);
+  buttonUp.onPress(pressHandler).onDoublePress(pressHandler).onPressFor(pressHandler, 1000);
+  buttonDown.onPress(pressHandler).onDoublePress(pressHandler).onPressFor(pressHandler, 1000);
+
+  // Start MQTT
+  //client = new EspMQTTClient(bikeStat.mqttBroker.c_str(), "BikeRike", bikeStat.mqttBrokerPort, bikeStat.mqttUser.c_str(), bikeStat.mqttPassword.c_str());
+  client = new EspMQTTClient(bikeStat.mqttBroker.c_str(), bikeStat.mqttBrokerPort, "BikeRike");
+
+  haDevice = new HAMqttDevice("smartgymbike", *client);
+  haEntity = new HAMqttEntity(*haDevice, "Exercise duration", HAMqttEntity::SENSOR);
+
+  haDevice->addConfig("sw_version", bikeStat.bikeRikeVersion);
+  haDevice->addConfig("manufactures", "GumeSoft");
+
+  client->setKeepAlive(MQTT_KEEPALIVE);
+  client->setMaxPacketSize(1024);
+
+  haEntity->addStateTopic();
+  haEntity->addConfig("device_class", "duration");
+  haEntity->addConfig("state_class", "total_increasing");
+  haEntity->addConfig("unit_of_measurement", "s");
 }
 
 uint32_t lastSysCheck = 0;
+uint32_t lastMQTTReport = 0;
 
 void loop() {
   uint32_t now = millis();
@@ -176,11 +207,25 @@ void loop() {
     // Chceck WiFi
     bikeStat.okWiFi = (WiFi.status() == WL_CONNECTED);
     // Check MQTT
-    bikeStat.okMQTT = true;
+    bikeStat.okMQTT = client->isMqttConnected();
     // Check Config Portal
     bikeStat.openCP = ESPAsync_WiFiManager->isConfigMode();
+
+    // Set LED according to cadence
+    if (bikeStat.bikeCadence > 0) bikeLED.setMode(BIKELED_BIKE);
+    else bikeLED.setMode(BIKELED_STOP);
+
     lastSysCheck = now;
   }
  
+  client->loop();
+  haDevice->manageAvailability(MQTT_KEEPALIVE);
+
+  // Time to send MQTT messages
+  if (now - lastMQTTReport > 5000) {
+    client->publish(haEntity->getStateTopic(), String(bikeStat.bikeTime / 1000));
+    lastMQTTReport = now;
+  }
+
   //digitalWrite(LED_BUILTIN, !digitalRead(PIN_BTND));
 }

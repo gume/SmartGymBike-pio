@@ -25,11 +25,9 @@ class BikeDisplay {
     static void statScreen0();
     static void statScreen1();
     static void statScreen2();
+    static void roadScreen();
     static void levelSetScreen();
     static void aboutScreen();
-
-    static void levelSetScreenInit();
-    static void levelSetScreenLeave();
  
     static void showBikeTime(int ypos);
     static void drawProgressbarH(int x,int y, int width, int height, int progress);
@@ -44,11 +42,11 @@ class BikeDisplay {
     uint32_t lastRefresh; // Last time display was refreshed
     uint32_t refreshInterval; // refresh period time
 
-    #define SCREENS 5
+    #define SCREENS 6
     int screenNum;  // Display various screens
-    screenCallBack screenDisplay[SCREENS] = { &statScreen0, &statScreen1, &statScreen2, &levelSetScreen, &aboutScreen};
-    screenCallBack screenInit[SCREENS] = { NULL, NULL, NULL, &levelSetScreenInit, NULL };
-    screenCallBack screenLeave[SCREENS] = { NULL, NULL, NULL, &levelSetScreenLeave, NULL };
+    screenCallBack screenDisplay[SCREENS] = { &statScreen0, &statScreen1, &statScreen2, &roadScreen, &levelSetScreen, &aboutScreen};
+
+    static int lastRoadRevs;
 
 };
 

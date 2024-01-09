@@ -3,6 +3,8 @@
 #include <WiFi.h>
 
 
+int BikeDisplay::lastRoadRevs;
+
 BikeDisplay::BikeDisplay() {
 }
 
@@ -155,6 +157,32 @@ void BikeDisplay::statScreen2() {
   display->setTextSize(1);
 }
 
+void BikeDisplay::roadScreen() {
+  BikeStat& bikeStat = BikeStat::getInstance();
+  int x = bikeStat.bikeRevs;
+  if (x == lastRoadRevs) return;
+
+  display->setRotation(1);
+  display->clearDisplay();
+  display->drawFastVLine(0, 0, 110, SSD1306_WHITE);
+  display->drawFastVLine(31, 0, 110, SSD1306_WHITE);
+
+  int x1 = (x % 50 == 0) ? x : ((x + 49) / 50) * 50; // The next round 50's
+  int x2 = x1 + 50;
+  int x3 = x1 + 100;
+
+  int y1 = 100 + (x % 50);
+  int y2 = 50 + (x % 50);
+  int y3 = 0 + (x % 50);
+
+  if (y1 <= 100) writeCenter(String(x1),y1);
+  writeCenter(String(x2),y2);
+  writeCenter(String(x3),y3);
+
+  lastRoadRevs = x;
+}
+
+
 void BikeDisplay::levelSetScreen() {
 
   BikeStat& bikeStat = BikeStat::getInstance();
@@ -189,46 +217,12 @@ void BikeDisplay::aboutScreen() {
   display->print(bikeStat.mqttBroker);
 }
 
-void BikeDisplay::levelSetScreenInit() {
-/*
-  bike.buttonUp.hideState(true);
-  bike.buttonUp.onClick(bikeDisplay_levelChange);
-  bike.buttonDown.hideState(true);
-  bike.buttonDown.onClick(bikeDisplay_levelChange);
-  bike.buttonSS.hideState(true);
-  bike.buttonSS.onClick(bikeDisplay_levelChange);
-*/
-}
-
-void BikeDisplay::levelSetScreenLeave() {
-/*
-  bike.buttonUp.hideState(false);
-  bike.buttonUp.onClick(NULL);
-  bike.buttonDown.hideState(false);
-  bike.buttonDown.onClick(NULL);  
-  bike.buttonSS.hideState(false);
-  bike.buttonSS.onClick(NULL);
-*/
-}
-
-void BikeDisplay::levelChange(int bp) {
-/*
-  if (bp == PIN_BTNU) {
-    if (++bikeLevel >= PRESETLEVELS) bikeLevel = 0;
-  }
-  else if (bp == PIN_BTND) {
-    if (--bikeLevel < 0) bikeLevel = PRESETLEVELS - 1;
-  }
-  bike.setLevel(bikeLevel);
-*/
-}
-
 void BikeDisplay::screenChange(int newNum) {
-  if (screenLeave[screenNum]) screenLeave[screenNum]();
   screenNum = newNum;
   if (screenNum >= SCREENS) screenNum = 0;
   if (screenNum < 0) screenNum = SCREENS - 1;
-  if (screenInit[screenNum]) screenInit[screenNum]();
+
+  if (screenNum == 3) lastRoadRevs = -1;
 }
 
 void BikeDisplay::screenNext(bool back) {

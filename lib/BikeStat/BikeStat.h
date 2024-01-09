@@ -16,8 +16,11 @@ public:
     bool okWiFi;
     bool okMQTT;
     bool openCP;
+
     String mqttBroker;
     int mqttBrokerPort;
+    String mqttUser;
+    String mqttPassword;
 
     // Function to get the instance of the singleton class
     static BikeStat& getInstance() {
