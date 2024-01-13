@@ -2,16 +2,17 @@
 
 #include <CircularBuffer.h>
 
+#define BUFFSIZE 10
+#define TOOOLD 4500
+
 class FreqCounter {
 public:
   FreqCounter();
 
   void reset();
   void signal();
-  int getRPM();
+  int getRPM(uint32_t old = TOOOLD);
 
-  #define BUFFSIZE 10
-  #define TOOOLD 3000
 private:
   CircularBuffer<uint32_t, BUFFSIZE> tbuffer;
 };

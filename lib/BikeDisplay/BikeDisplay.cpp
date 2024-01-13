@@ -167,17 +167,18 @@ void BikeDisplay::roadScreen() {
   display->drawFastVLine(0, 0, 110, SSD1306_WHITE);
   display->drawFastVLine(31, 0, 110, SSD1306_WHITE);
 
-  int x1 = (x % 50 == 0) ? x : ((x + 49) / 50) * 50; // The next round 50's
-  int x2 = x1 + 50;
-  int x3 = x1 + 100;
-
-  int y1 = 100 + (x % 50);
-  int y2 = 50 + (x % 50);
-  int y3 = 0 + (x % 50);
-
-  if (y1 <= 100) writeCenter(String(x1),y1);
-  writeCenter(String(x2),y2);
-  writeCenter(String(x3),y3);
+  if ((x/50) * 50 == x) {
+    // Display 3 values
+    writeCenter(String(x), 100);
+    writeCenter(String(x+50), 50);
+    writeCenter(String(x+100), 0);
+  } else {
+    // Display 2 values only
+    int x1 = ((x + 49) / 50) * 50; // The next round 50's
+    int y1 = x % 50;
+    writeCenter(String(x1), 50 + y1);
+    writeCenter(String(x1 + 50), y1);
+  }
 
   lastRoadRevs = x;
 }

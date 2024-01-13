@@ -30,7 +30,7 @@ HAMqttDevice *haDevice;
 HAMqttEntity *haEntity;
 
 BikeStat* BikeStat::instance = nullptr;
-String BikeStat::bikeRikeVersion = "BikeRike 0.21";
+String BikeStat::bikeRikeVersion = "BikeRike 0.24";
 
 BikeLED bikeLED;
 WS2812FX *BikeLED::ws2812fx = new WS2812FX(3, 25, NEO_GRB + NEO_KHZ800);
@@ -96,6 +96,9 @@ void setup() {
 
   Serial.println("Starting SmartGymBike");
 
+  bikeLED.setup();
+  bikeLED.setMode(BIKELED_BOOT1);
+
   Serial.println("FileSystem start");
   LittleFS.begin(FORMAT_LITTLEFS_IF_FAILED);
 
@@ -103,6 +106,8 @@ void setup() {
   if (digitalRead(PIN_BTNS) == 0) {
     LittleFS.format();
   }
+
+  bikeLED.setMode(BIKELED_BOOT2);
 
   Serial.println("WiFiManager start");
   ESPAsync_WiFiManager = new ESPAsync_WiFiManager_Lite();
@@ -116,7 +121,6 @@ void setup() {
   bikeStat.mqttUser = myMenuItems[2].pdata;
   bikeStat.mqttPassword = myMenuItems[3].pdata;
 
-  bikeLED.setup();
   bikeLED.setMode(BIKELED_STOP);
 
   bikeDisplay.setup();

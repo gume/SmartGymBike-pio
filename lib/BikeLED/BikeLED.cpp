@@ -59,7 +59,7 @@ void BikeLED::loop() {
                 if (bikeStat.bikeCadence >= 50) c = CYAN;
                 if (bikeStat.bikeCadence >= 70) c = GREEN;
 
-                ws2812fx->setSegment(0, 0, 2, FX_MODE_STATIC, c,  50, (uint8_t) (GAMMA || FADE_FAST));
+                ws2812fx->setSegment(0, 0, 2, FX_MODE_STATIC, c,  50, GAMMA);
                 ws2812fx->setBrightness(32);
                 ws2812fx->start();
                 revs = bikeStat.bikeRevs;
@@ -69,7 +69,7 @@ void BikeLED::loop() {
         change = false;
     } else {
         if (bikeLED_mode == BIKELED_BIKE) {
-            int br = 64 - (millis() - lastRev) / 10;
+            int br = 32 - (millis() - lastRev) / 20;
             if (br < 0) br = 0;
             ws2812fx->setBrightness(br);
         }
@@ -83,35 +83,20 @@ void BikeLED::setMode(int mode) {
     
     bikeLED_mode = mode;
     change = true;
-}
 
-/*
-void BikeLED::breath(int color) {
-    ws2812fx->setSegment(0, 0, 2, FX_MODE_BREATH, color,  1000, NO_OPTIONS);
-    ws2812fx->start();
-    bikeLED_mode = BIKELED_BREATH;
-}
-
-void BikeLED::running(int cadenceP, int levelP) {
-    if (bikeLED_mode != BIKELED_RUNNING) {
-        ws2812fx->setSegment(0, 0, 2, FX_MODE_SCAN, BLACK,  10000, NO_OPTIONS);
+    if (mode == BIKELED_BOOT1) {
+        ws2812fx->setSegment(0, 0, 2, FX_MODE_STATIC, BLACK,  50, GAMMA);
+        ws2812fx->setBrightness(64);
         ws2812fx->start();
-        bikeLED_mode = BIKELED_RUNNING;
+        ws2812fx->setPixelColor(0, WHITE);
+        ws2812fx->service();
     }
-
-    byte r, g, b;
-    levelP = levelP * 254 / 200;
-    if (levelP > 254) levelP = 254;
-
-    b = max(127-levelP,0)*2;
-    g = 255-abs(127-levelP)*2;
-    r = max(levelP-127,0)*2;
-    ws2812fx->setColor(((uint32_t)r << 16) + ((uint32_t)g << 8) + (uint32_t)b);
-
-    cadenceP = cadenceP * 70 / 100;
-    if (cadenceP > 140) cadenceP = 140;
-    int ls = 6000 - cadenceP*40;
-    if (ls < 10) ls = 10;
-    ws2812fx->setSpeed(ls);
+    else if (mode == BIKELED_BOOT2) {
+        ws2812fx->setSegment(0, 0, 2, FX_MODE_STATIC, BLACK,  50, GAMMA);
+        ws2812fx->setBrightness(64);
+        ws2812fx->start();
+        ws2812fx->setPixelColor(0, RED);
+        ws2812fx->setPixelColor(1, WHITE);
+        ws2812fx->service();
+    } 
 }
-*/

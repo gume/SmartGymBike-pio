@@ -6,6 +6,8 @@
 #define BIKELED_NONE    0
 #define BIKELED_STOP    1
 #define BIKELED_BIKE    2
+#define BIKELED_BOOT1   3
+#define BIKELED_BOOT2   4
 
 class BikeLED {
 public:
