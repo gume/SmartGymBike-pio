@@ -10,8 +10,11 @@
 #include <BfButton.h>
 #include <ESPAsyncWebServer.h>
 #include <ArduinoOTA.h>
-#include "EspMQTTClient.h"
-#include <HAMqtt.h>
+
+#include <HaBridge.h>
+#include <MQTTRemote.h>
+#include <entities/HaEntityTemperature.h>
+#include <nlohmann/json.hpp>
 
 #include "BikeStat.h"
 #include "BikeDisplay.h"
@@ -23,14 +26,15 @@
 #define FORMAT_LITTLEFS_IF_FAILED true
 
 ESPAsync_WiFiManager_Lite* ESPAsync_WiFiManager;
-//WiFiClient espClient;
-//PubSubClient client(espClient);
-EspMQTTClient *client;
-HAMqttDevice *haDevice;
-HAMqttEntity *haEntity;
 
 BikeStat* BikeStat::instance = nullptr;
-String BikeStat::bikeRikeVersion = "BikeRike 0.24";
+String BikeStat::bikeRikeVersion = "BikeRike 0.25";
+
+nlohmann::json _json_this_device_doc;
+MQTTRemote *_mqtt_remote = NULL;
+HaBridge *_ha_bridge = NULL;
+HaEntityTemperature *_ha_entity_temperature;
+bool _was_connected = false;
 
 BikeLED bikeLED;
 WS2812FX *BikeLED::ws2812fx = new WS2812FX(3, 25, NEO_GRB + NEO_KHZ800);
@@ -86,10 +90,6 @@ void pressHandler(BfButton *btn, BfButton::press_pattern_t pattern) {
   //digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
 }
 
-void onConnectionEstablished() {
-  // sends the configuration payload on the configuration topic.
-  client->publish(haEntity->getDiscoveryTopic(), haEntity->getConfigPayload(), true);
-}
 
 void setup() {
   Serial.begin(115200);
@@ -163,23 +163,17 @@ void setup() {
   buttonUp.onPress(pressHandler).onDoublePress(pressHandler).onPressFor(pressHandler, 1000);
   buttonDown.onPress(pressHandler).onDoublePress(pressHandler).onPressFor(pressHandler, 1000);
 
-  // Start MQTT
-  //client = new EspMQTTClient(bikeStat.mqttBroker.c_str(), "BikeRike", bikeStat.mqttBrokerPort, bikeStat.mqttUser.c_str(), bikeStat.mqttPassword.c_str());
-  client = new EspMQTTClient(bikeStat.mqttBroker.c_str(), bikeStat.mqttBrokerPort, "BikeRike");
+  // Setup HA integration
+  String id = "bikerike_" + String(ESP.getEfuseMac());
+  _json_this_device_doc["identifiers"] = id.c_str();
+  _json_this_device_doc["name"] = "bikerike";
+  _json_this_device_doc["sw_version"] = "1.0.0";
+  _json_this_device_doc["model"] = "SmartGymBike";
+  _json_this_device_doc["manufacturer"] = "GumeSoft";
 
-  haDevice = new HAMqttDevice("smartgymbike", *client);
-  haEntity = new HAMqttEntity(*haDevice, "Exercise duration", HAMqttEntity::SENSOR);
-
-  haDevice->addConfig("sw_version", bikeStat.bikeRikeVersion);
-  haDevice->addConfig("manufactures", "GumeSoft");
-
-  client->setKeepAlive(MQTT_KEEPALIVE);
-  client->setMaxPacketSize(1024);
-
-  haEntity->addStateTopic();
-  haEntity->addConfig("device_class", "duration");
-  haEntity->addConfig("state_class", "total_increasing");
-  haEntity->addConfig("unit_of_measurement", "s");
+  _mqtt_remote = new MQTTRemote(id.c_str(), bikeStat.mqttBroker.c_str(), bikeStat.mqttBrokerPort, "", "");
+  _ha_bridge = new HaBridge (*_mqtt_remote, id.c_str(), _json_this_device_doc);
+  _ha_entity_temperature = new HaEntityTemperature(*_ha_bridge, "temperature");
 }
 
 uint32_t lastSysCheck = 0;
@@ -211,7 +205,10 @@ void loop() {
     // Chceck WiFi
     bikeStat.okWiFi = (WiFi.status() == WL_CONNECTED);
     // Check MQTT
-    bikeStat.okMQTT = client->isMqttConnected();
+    auto mconnected = _mqtt_remote->connected();
+    bikeStat.okMQTT = mconnected;
+    if (!_was_connected && mconnected) _ha_entity_temperature->publishConfiguration();
+    _was_connected = mconnected;
     // Check Config Portal
     bikeStat.openCP = ESPAsync_WiFiManager->isConfigMode();
 
@@ -222,12 +219,9 @@ void loop() {
     lastSysCheck = now;
   }
  
-  client->loop();
-  haDevice->manageAvailability(MQTT_KEEPALIVE);
-
-  // Time to send MQTT messages
+   _mqtt_remote->handle();
   if (now - lastMQTTReport > 5000) {
-    client->publish(haEntity->getStateTopic(), String(bikeStat.bikeTime / 1000));
+    _ha_entity_temperature->publishTemperature(25.5);
     lastMQTTReport = now;
   }
 
