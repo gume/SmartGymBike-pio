@@ -9,12 +9,9 @@
 #include <Adafruit_SSD1306.h>
 #include <BfButton.h>
 #include <ESPAsyncWebServer.h>
+#include <Arduino.h>
 #include <ArduinoOTA.h>
-
-#include <HaBridge.h>
-#include <MQTTRemote.h>
-#include <entities/HaEntityTemperature.h>
-#include <nlohmann/json.hpp>
+#include <ArduinoHA.h>
 
 #include "BikeStat.h"
 #include "BikeDisplay.h"
@@ -27,14 +24,15 @@
 
 ESPAsync_WiFiManager_Lite* ESPAsync_WiFiManager;
 
-BikeStat* BikeStat::instance = nullptr;
-String BikeStat::bikeRikeVersion = "BikeRike 0.25";
+WiFiClient client;
+HADevice device;
+HAMqtt mqtt(client, device);
+HASensorNumber trainTimeSensor("trainingTime");
+HASensorNumber revsSensor("revs");
+HASensorNumber cadenceSensor("cadence");
 
-nlohmann::json _json_this_device_doc;
-MQTTRemote *_mqtt_remote = NULL;
-HaBridge *_ha_bridge = NULL;
-HaEntityTemperature *_ha_entity_temperature;
-bool _was_connected = false;
+BikeStat* BikeStat::instance = nullptr;
+String BikeStat::bikeRikeVersion = "BikeRike 0.3";
 
 BikeLED bikeLED;
 WS2812FX *BikeLED::ws2812fx = new WS2812FX(3, 25, NEO_GRB + NEO_KHZ800);
@@ -164,16 +162,26 @@ void setup() {
   buttonDown.onPress(pressHandler).onDoublePress(pressHandler).onPressFor(pressHandler, 1000);
 
   // Setup HA integration
-  String id = "bikerike_" + String(ESP.getEfuseMac());
-  _json_this_device_doc["identifiers"] = id.c_str();
-  _json_this_device_doc["name"] = "bikerike";
-  _json_this_device_doc["sw_version"] = "1.0.0";
-  _json_this_device_doc["model"] = "SmartGymBike";
-  _json_this_device_doc["manufacturer"] = "GumeSoft";
+  byte mac[6]; // WL_MAC_ADDR_LENGTH is not defined ?
+  WiFi.macAddress(mac);
+  device.setUniqueId(mac, sizeof(mac));
 
-  _mqtt_remote = new MQTTRemote(id.c_str(), bikeStat.mqttBroker.c_str(), bikeStat.mqttBrokerPort, "", "");
-  _ha_bridge = new HaBridge (*_mqtt_remote, id.c_str(), _json_this_device_doc);
-  _ha_entity_temperature = new HaEntityTemperature(*_ha_bridge, "temperature");
+  device.setName("BikeRike");
+  device.setManufacturer("GumeSoft");
+  device.setModel("SmartGymBike");
+  device.setSoftwareVersion("1.0.0");
+
+  device.enableSharedAvailability();
+  device.enableLastWill();
+
+  trainTimeSensor.setName("trainingTime");
+  trainTimeSensor.setDeviceClass("duration");
+  trainTimeSensor.setUnitOfMeasurement("s");
+
+  revsSensor.setName("revs");
+  cadenceSensor.setName("cadence");
+  
+  mqtt.begin(bikeStat.mqttBroker.c_str(), bikeStat.mqttBrokerPort);
 }
 
 uint32_t lastSysCheck = 0;
@@ -183,6 +191,7 @@ void loop() {
   uint32_t now = millis();
 
   ESPAsync_WiFiManager->run();
+  mqtt.loop();
 
   bikeLED.loop();
   bikeDisplay.loop();
@@ -205,10 +214,7 @@ void loop() {
     // Chceck WiFi
     bikeStat.okWiFi = (WiFi.status() == WL_CONNECTED);
     // Check MQTT
-    auto mconnected = _mqtt_remote->connected();
-    bikeStat.okMQTT = mconnected;
-    if (!_was_connected && mconnected) _ha_entity_temperature->publishConfiguration();
-    _was_connected = mconnected;
+    bikeStat.okMQTT = mqtt.isConnected();
     // Check Config Portal
     bikeStat.openCP = ESPAsync_WiFiManager->isConfigMode();
 
@@ -219,9 +225,10 @@ void loop() {
     lastSysCheck = now;
   }
  
-   _mqtt_remote->handle();
   if (now - lastMQTTReport > 5000) {
-    _ha_entity_temperature->publishTemperature(25.5);
+    trainTimeSensor.setValue((uint32_t) (bikeStat.bikeTime / 1000));
+    revsSensor.setValue(bikeStat.bikeRevs);
+    cadenceSensor.setValue(bikeStat.bikeCadence);
     lastMQTTReport = now;
   }
 
