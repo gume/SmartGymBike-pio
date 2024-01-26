@@ -98,5 +98,10 @@ void BikeLED::setMode(int mode) {
         ws2812fx->setPixelColor(0, RED);
         ws2812fx->setPixelColor(1, WHITE);
         ws2812fx->service();
-    } 
+    }
+    else if (mode == BIKELED_SAFEMODE) {
+        ws2812fx->setSegment(0, 0, 2, FX_MODE_BREATH, YELLOW,  50, GAMMA);
+        ws2812fx->setBrightness(64);
+        ws2812fx->start();
+    }
 }

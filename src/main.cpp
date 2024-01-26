@@ -18,6 +18,8 @@
 #include "BikeLED.h"
 #include <WS2812FX.h>
 
+#include "BikeHR.h"
+
 #include "SmartGymBike.h"
 
 #define FORMAT_LITTLEFS_IF_FAILED true
@@ -30,12 +32,16 @@ HAMqtt mqtt(client, device);
 HASensorNumber trainTimeSensor("trainingTime");
 HASensorNumber revsSensor("revs");
 HASensorNumber cadenceSensor("cadence");
+HASensorNumber hRSensor("HRM");
 
 BikeStat* BikeStat::instance = nullptr;
-String BikeStat::bikeRikeVersion = "BikeRike 0.3";
+String BikeStat::bikeRikeVersion = "BikeRike 0.41";
+String BikeStat::bikeHRSensorName = "6076-33"; // Should be set on the webpage !
 
 BikeLED bikeLED;
 WS2812FX *BikeLED::ws2812fx = new WS2812FX(3, 25, NEO_GRB + NEO_KHZ800);
+
+BikeHR bikeHR;
 
 BikeDisplay bikeDisplay;
 
@@ -89,6 +95,8 @@ void pressHandler(BfButton *btn, BfButton::press_pattern_t pattern) {
 }
 
 
+bool safeMode;
+
 void setup() {
   Serial.begin(115200);
 
@@ -103,6 +111,13 @@ void setup() {
   // Check Service button, if it is down, erase the config
   if (digitalRead(PIN_BTNS) == 0) {
     LittleFS.format();
+  }
+
+  safeMode = false;
+  // Check Pulse button, if it is down, then safemode
+  if (digitalRead(PIN_BTNP) == 0) {
+    safeMode = true;
+    Serial.println("Entering safe mode");
   }
 
   bikeLED.setMode(BIKELED_BOOT2);
@@ -120,9 +135,7 @@ void setup() {
   bikeStat.mqttPassword = myMenuItems[3].pdata;
 
   bikeLED.setMode(BIKELED_STOP);
-
-  bikeDisplay.setup();
-  bikeDisplay.toast("Welc\nome!", 3000);
+  if (safeMode) bikeLED.setMode(BIKELED_SAFEMODE);
 
   ArduinoOTA
     .onStart([]() {
@@ -152,36 +165,47 @@ void setup() {
 
   ArduinoOTA.begin();
 
-  // Setup cadence sensor
-  pinMode(PIN_SPEED, INPUT_PULLUP);
-  attachInterrupt(PIN_SPEED, cadenceIRQ, FALLING);
+  if (!safeMode) {
 
-  buttonEnter.onPress(pressHandler).onDoublePress(pressHandler).onPressFor(pressHandler, 1000);
-  buttonUser.onPress(pressHandler).onDoublePress(pressHandler).onPressFor(pressHandler, 1000);
-  buttonUp.onPress(pressHandler).onDoublePress(pressHandler).onPressFor(pressHandler, 1000);
-  buttonDown.onPress(pressHandler).onDoublePress(pressHandler).onPressFor(pressHandler, 1000);
+    // Setup display
+    bikeDisplay.setup();
+    bikeDisplay.toast("Welc\nome!", 3000);
 
-  // Setup HA integration
-  byte mac[6]; // WL_MAC_ADDR_LENGTH is not defined ?
-  WiFi.macAddress(mac);
-  device.setUniqueId(mac, sizeof(mac));
+    // Setup cadence sensor
+    pinMode(PIN_SPEED, INPUT_PULLUP);
+    attachInterrupt(PIN_SPEED, cadenceIRQ, FALLING);
 
-  device.setName("BikeRike");
-  device.setManufacturer("GumeSoft");
-  device.setModel("SmartGymBike");
-  device.setSoftwareVersion("1.0.0");
+    buttonEnter.onPress(pressHandler).onDoublePress(pressHandler).onPressFor(pressHandler, 1000);
+    buttonUser.onPress(pressHandler).onDoublePress(pressHandler).onPressFor(pressHandler, 1000);
+    buttonUp.onPress(pressHandler).onDoublePress(pressHandler).onPressFor(pressHandler, 1000);
+    buttonDown.onPress(pressHandler).onDoublePress(pressHandler).onPressFor(pressHandler, 1000);
 
-  device.enableSharedAvailability();
-  device.enableLastWill();
+    // Setup BLE sensor
+    bikeHR.setup();
 
-  trainTimeSensor.setName("trainingTime");
-  trainTimeSensor.setDeviceClass("duration");
-  trainTimeSensor.setUnitOfMeasurement("s");
+    // Setup HA integration
+    byte mac[6]; // WL_MAC_ADDR_LENGTH is not defined ?
+    WiFi.macAddress(mac);
+    device.setUniqueId(mac, sizeof(mac));
 
-  revsSensor.setName("revs");
-  cadenceSensor.setName("cadence");
-  
-  mqtt.begin(bikeStat.mqttBroker.c_str(), bikeStat.mqttBrokerPort);
+    device.setName("BikeRike");
+    device.setManufacturer("GumeSoft");
+    device.setModel("SmartGymBike");
+    device.setSoftwareVersion("1.0.0");
+
+    device.enableSharedAvailability();
+    device.enableLastWill();
+
+    trainTimeSensor.setName("trainingTime");
+    trainTimeSensor.setDeviceClass("duration");
+    trainTimeSensor.setUnitOfMeasurement("s");
+
+    revsSensor.setName("revs");
+    cadenceSensor.setName("cadence");
+    hRSensor.setName("HRM");
+    
+    mqtt.begin(bikeStat.mqttBroker.c_str(), bikeStat.mqttBrokerPort);
+  }
 }
 
 uint32_t lastSysCheck = 0;
@@ -191,45 +215,52 @@ void loop() {
   uint32_t now = millis();
 
   ESPAsync_WiFiManager->run();
-  mqtt.loop();
-
-  bikeLED.loop();
-  bikeDisplay.loop();
-
-  buttonUp.read();
-  buttonDown.read();
-  buttonSS.read();
-  buttonUser.read();
-  buttonPulse.read();
-  buttonEnter.read();
-
   ArduinoOTA.handle();
+  bikeLED.loop();
 
-  smartGymBike.loop();
+  if (!safeMode) {
+    mqtt.loop();
 
-  BikeStat& bikeStat = BikeStat::getInstance();
+    bikeDisplay.loop();
+    bikeHR.loop();
 
-  // Check Systen status
-  if (now - lastSysCheck > 500) {
-    // Chceck WiFi
-    bikeStat.okWiFi = (WiFi.status() == WL_CONNECTED);
-    // Check MQTT
-    bikeStat.okMQTT = mqtt.isConnected();
-    // Check Config Portal
-    bikeStat.openCP = ESPAsync_WiFiManager->isConfigMode();
+    buttonUp.read();
+    buttonDown.read();
+    buttonSS.read();
+    buttonUser.read();
+    buttonPulse.read();
+    buttonEnter.read();
 
-    // Set LED according to cadence
-    if (bikeStat.bikeCadence > 0) bikeLED.setMode(BIKELED_BIKE);
-    else bikeLED.setMode(BIKELED_STOP);
+    smartGymBike.loop();
 
-    lastSysCheck = now;
-  }
- 
-  if (now - lastMQTTReport > 5000) {
-    trainTimeSensor.setValue((uint32_t) (bikeStat.bikeTime / 1000));
-    revsSensor.setValue(bikeStat.bikeRevs);
-    cadenceSensor.setValue(bikeStat.bikeCadence);
-    lastMQTTReport = now;
+    BikeStat& bikeStat = BikeStat::getInstance();
+
+    // Check Systen status
+    if (now - lastSysCheck > 500) {
+      // Chceck WiFi
+      bikeStat.okWiFi = (WiFi.status() == WL_CONNECTED);
+      // Check MQTT
+      bikeStat.okMQTT = mqtt.isConnected();
+      // Check Config Portal
+      bikeStat.openCP = ESPAsync_WiFiManager->isConfigMode();
+
+      // Set LED according to cadence
+      if (bikeStat.bikeCadence > 0) bikeLED.setMode(BIKELED_BIKE);
+      else bikeLED.setMode(BIKELED_STOP);
+
+      lastSysCheck = now;
+      Serial.println(".");
+    }
+  
+    if (now - lastMQTTReport > 5000) {
+      Serial.println("MQTT report");
+      trainTimeSensor.setValue((uint32_t) (bikeStat.bikeTime / 1000));
+      revsSensor.setValue(bikeStat.bikeRevs);
+      cadenceSensor.setValue(bikeStat.bikeCadence);
+      if (bikeStat.bikeHRConnected) hRSensor.setValue(bikeStat.bikeHR);
+      lastMQTTReport = now;
+    }
+
   }
 
   //digitalWrite(LED_BUILTIN, !digitalRead(PIN_BTND));

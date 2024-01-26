@@ -8,6 +8,8 @@
 #define BIKELED_BIKE    2
 #define BIKELED_BOOT1   3
 #define BIKELED_BOOT2   4
+#define BIKELED_SAFEMODE    5
+
 
 class BikeLED {
 public:

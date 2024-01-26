@@ -10,6 +10,10 @@ public:
     int bikeCadence;
     int bikeRevs;
     int bikeResistance;
+    bool bikeHRConnected;
+    int bikeHR;
+    static String bikeHRSensorName;
+    String bikeHRSensorAddress;
     static String bikeRikeVersion;
 
     // System parameters
@@ -40,6 +44,9 @@ private:
         bikeCadence = 0;
         bikeRevs = 0;
         bikeResistance = 0;
+        bikeHR = 0;
+        bikeHRConnected = false;
+        bikeHRSensorAddress = String("Not connected");
 
         okWiFi = false;
         okMQTT = false;
