@@ -35,7 +35,7 @@ HASensorNumber cadenceSensor("cadence");
 HASensorNumber hRSensor("HRM");
 
 BikeStat* BikeStat::instance = nullptr;
-String BikeStat::bikeRikeVersion = "BikeRike 0.43";
+String BikeStat::bikeRikeVersion = "BikeRike 0.44";
 String BikeStat::bikeHRSensorName = "6076-33"; // Should be set on the webpage !
 
 BikeLED bikeLED;
@@ -210,6 +210,7 @@ void setup() {
 
 uint32_t lastSysCheck = 0;
 uint32_t lastMQTTReport = 0;
+uint32_t lastIntCheck = 0;
 
 void loop() {
   uint32_t now = millis();
@@ -259,6 +260,27 @@ void loop() {
       cadenceSensor.setValue(bikeStat.bikeCadence);
       if (bikeStat.bikeHRConnected) hRSensor.setValue(bikeStat.bikeHR);
       lastMQTTReport = now;
+    }
+
+    if (now - lastIntCheck > 100) {
+      if (bikeStat.bikeLastIntenseStart == 0 && bikeStat.bikeCadence > 70) {
+        bikeStat.bikeLastIntenseStart = now;
+      }
+      
+      if (bikeStat.bikeLastIntenseStart > 0) {
+        if (bikeStat.bikeCadence < 70) bikeStat.bikeLastIntenseStart = 0;
+
+        if (now - bikeStat.bikeLastIntenseStart > 3000 && now - bikeStat.bikeLastIntenseStart < 5000) {
+          bikeStat.bikeLastMaxCadence = 0;
+          bikeStat.bikeLastMaxHR = 0;
+        }
+        if (now - bikeStat.bikeLastIntenseStart > 5000) {
+          if (bikeStat.bikeCadence > bikeStat.bikeLastMaxCadence) bikeStat.bikeLastMaxCadence = bikeStat.bikeCadence;
+          if (bikeStat.bikeHR > bikeStat.bikeLastMaxHR) bikeStat.bikeLastMaxHR = bikeStat.bikeHR;
+        }
+      }
+
+      lastIntCheck = now;
     }
 
   }

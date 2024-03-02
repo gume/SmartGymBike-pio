@@ -17,6 +17,10 @@ public:
     String bikeHRSensorAddress;
     static String bikeRikeVersion;
 
+    int bikeLastMaxHR;
+    int bikeLastMaxCadence;
+    uint32_t bikeLastIntenseStart;
+
     // System parameters
     bool okWiFi;
     bool okMQTT;
@@ -48,6 +52,9 @@ private:
         bikeHR = 0;
         bikeHRConnected = false;
         bikeHRSensorAddress = String("Not connected");
+        bikeLastMaxCadence = 0;
+        bikeLastMaxHR = 0;
+        bikeLastIntenseStart = 0;
 
         okWiFi = false;
         okMQTT = false;

@@ -25,6 +25,7 @@ class BikeDisplay {
     static void statScreen0();
     static void statScreen1();
     static void statScreen2();
+    static void statScreen3();
     static void roadScreen();
     static void heartScreen();
     static void levelSetScreen();
@@ -45,9 +46,9 @@ class BikeDisplay {
     uint32_t lastRefresh; // Last time display was refreshed
     uint32_t refreshInterval; // refresh period time
 
-    #define SCREENS 7
+    #define SCREENS 8
     int screenNum;  // Display various screens
-    screenCallBack screenDisplay[SCREENS] = { &statScreen0, &statScreen1, &statScreen2, &roadScreen, &heartScreen, &levelSetScreen, &aboutScreen };
+    screenCallBack screenDisplay[SCREENS] = { &statScreen0, &statScreen1, &statScreen2, &statScreen3, &roadScreen, &heartScreen, &levelSetScreen, &aboutScreen };
 
     static int lastRoadRevs;
 

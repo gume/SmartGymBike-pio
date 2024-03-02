@@ -150,6 +150,15 @@ void BikeDisplay::statScreen2() {
   display->setTextSize(1);
 }
 
+void BikeDisplay::statScreen3() {
+  display->setRotation(1);
+  display->clearDisplay();
+  writeCenter("Heart", 30, 1);
+  writeCenter(String(bikeStat.bikeLastMaxHR), 40, 2);
+  writeCenter("RPM", 60, 1);
+  writeCenter(String(bikeStat.bikeLastMaxCadence), 70, 2);
+}
+
 void BikeDisplay::roadScreen() {
 
   int x = bikeStat.bikeRevs;
@@ -223,7 +232,7 @@ void BikeDisplay::screenChange(int newNum) {
   if (screenNum >= SCREENS) screenNum = 0;
   if (screenNum < 0) screenNum = SCREENS - 1;
 
-  if (screenNum == 3) lastRoadRevs = -1;
+  if (screenNum == 4) lastRoadRevs = -1;
 }
 
 void BikeDisplay::screenNext(bool back) {
@@ -240,6 +249,7 @@ void BikeDisplay::drawProgressbarH(int x,int y, int width, int height, int progr
 }
 
 void BikeDisplay::writeCenter(String text, int ypos, int size) {
+  display->setTextSize(size);
   display->setCursor(16-(text.length()*(5*size)/2), ypos);
   display->print(text.c_str());
 }
