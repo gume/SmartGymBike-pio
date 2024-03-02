@@ -30,7 +30,7 @@ class BikeHR {
     BikeStat& bikeStat;
 
     static void hRCallback( BLERemoteCharacteristic* pBLERemoteCharacteristic, uint8_t* pData, size_t length, bool isNotify) {
-        Serial.println("Notify");
+        //Serial.println("Notify");
         /*Serial.print(length);
         Serial.print(": ");
         for (int i = 0; i < length; i++) {
@@ -48,28 +48,30 @@ class BikeHR {
         }
         bool contactSupport = ((pData[0] & 4) > 0);
         bool contactStatus = ((pData[0] & 2) > 0);
-        if (contactSupport && contactStatus) {
-            Serial.println("Contact");
-        }
-        Serial.println(rpm);
+
+        //Serial.println(rpm);
+        BikeStat& bs = BikeStat::getInstance();
         if (!(contactSupport && !contactStatus)) {
-            BikeStat& bs = BikeStat::getInstance();
             bs.bikeHR = rpm;
         }
+        if (contactSupport && !contactStatus) {
+            bs.bikeHR = 0;
+        }
+        bs.bikeHRUpdate = millis();
     }
 
     class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
         void onResult(BLEAdvertisedDevice advertisedDevice) {
-            Serial.println(advertisedDevice.toString().c_str());
+            //Serial.println(advertisedDevice.toString().c_str());
             BikeStat& bs = BikeStat::getInstance();
             if (advertisedDevice.getName().compare(bs.bikeHRSensorName.c_str()) == 0) {
                 bs.bikeHRSensorAddress = String(advertisedDevice.getAddress().toString().c_str());
                 BikeHR::peripheralAddress = new BLEAddress(bs.bikeHRSensorAddress.c_str());
-                Serial.println(BikeHR::peripheralAddress->toString().c_str());
+                //Serial.println(BikeHR::peripheralAddress->toString().c_str());
                 BikeHR::myAdvertisedDevice = new BLEAdvertisedDevice(advertisedDevice);
 
                 // Stop scanning
-                Serial.println("Stop scan");
+                //Serial.println("Stop scan");
                 BLEScan* pBLEScan = BLEDevice::getScan();
                 pBLEScan->stop();
             }

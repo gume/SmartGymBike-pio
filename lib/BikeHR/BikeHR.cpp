@@ -9,6 +9,7 @@ BikeHR::BikeHR() : bikeStat(BikeStat::getInstance())/*,  peripheralAddress(nullp
 
 void BikeHR::setup() {
     BLEDevice::init("ESP32");
+    bikeStat.bikeHR = 0;
 }
 
 bool BikeHR::connectSensor() {
@@ -16,7 +17,7 @@ bool BikeHR::connectSensor() {
     if (waitFor > millis()) return false;
 
     if (!scanStarted) {
-        Serial.println("Start scan");
+        //Serial.println("Start scan");
         // Find the device address
 
         BLEScan* pBLEScan = BLEDevice::getScan();
@@ -46,25 +47,28 @@ bool BikeHR::connectSensor() {
     }
 
     if (!pRemoteCharacteristic) {
-        Serial.println("get Service");
+        //Serial.println("get Service");
         pRemoteService = pClient->getService(BLEUUID((uint16_t)0x180D));
         if (pRemoteService == nullptr) {
             pClient->disconnect();
+            myAdvertisedDevice = nullptr;
+            scanStarted = false;
             return false;
         }
-        Serial.println("get Characteristic");
+        //Serial.println("get Characteristic");
         pRemoteCharacteristic = pRemoteService->getCharacteristic(BLEUUID((uint16_t)0x2A37));
         if (pRemoteCharacteristic == nullptr) {
             pClient->disconnect();
+            myAdvertisedDevice = nullptr;
+            scanStarted = false;
             return false;
         }
         pRemoteCharacteristic->registerForNotify(BikeHR::hRCallback);
 
-
     }
 
     waitFor = 0;
-    Serial.println("Connected");
+    //Serial.println("Connected");
     return true;
 }
 
@@ -76,12 +80,20 @@ void BikeHR::loop() {
     
     if (millis() < waitFor) return;
 
-    bikeStat.bikeHRConnected = pClient->isConnected();
+    if (millis() > bikeStat.bikeHRUpdate + 2000) {
+        bikeStat.bikeHR = 0;
+    }
 
+    bikeStat.bikeHRConnected = pClient->isConnected();
     if (!pClient->isConnected()) {
-        Serial.println("Not connected");
-        waitFor = 0;
-        connectSensor();
+
+        //Serial.println("Not connected");
+        myAdvertisedDevice = nullptr;
+        scanStarted = false;
+
+        pRemoteCharacteristic->registerForNotify(nullptr);
+        pRemoteCharacteristic = nullptr;
+
         return;
     }
 }

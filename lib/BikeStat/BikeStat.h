@@ -12,6 +12,7 @@ public:
     int bikeResistance;
     bool bikeHRConnected;
     int bikeHR;
+    uint32_t bikeHRUpdate;
     static String bikeHRSensorName;
     String bikeHRSensorAddress;
     static String bikeRikeVersion;

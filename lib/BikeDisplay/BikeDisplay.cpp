@@ -4,6 +4,7 @@
 
 
 int BikeDisplay::lastRoadRevs;
+BikeStat& BikeDisplay::bikeStat = BikeStat::getInstance();
 
 BikeDisplay::BikeDisplay() {
 }
@@ -66,8 +67,6 @@ void BikeDisplay::toast(String message, uint32_t duration) {
 
 void BikeDisplay::showBikeTime(int ypos) {
 
-  BikeStat& bikeStat = BikeStat::getInstance();
-
   // Display bikeTime
   int h = bikeStat.bikeTime / 1000 / 60 / 60;
   int m = (bikeStat.bikeTime / 1000 / 60) % 60;
@@ -95,8 +94,6 @@ void BikeDisplay::showBikeTime(int ypos) {
 
 void BikeDisplay::statScreen0() {
 
-  BikeStat& bikeStat = BikeStat::getInstance();
-
   display->setRotation(1);
   display->clearDisplay();
   showBikeTime(0);
@@ -120,8 +117,6 @@ void BikeDisplay::statScreen0() {
 
 void BikeDisplay::statScreen1() {
 
-  BikeStat& bikeStat = BikeStat::getInstance();
-
   display->setRotation(1);
   display->clearDisplay();
   showBikeTime(0);
@@ -134,8 +129,6 @@ void BikeDisplay::statScreen1() {
 }
 
 void BikeDisplay::statScreen2() {
-
-  BikeStat& bikeStat = BikeStat::getInstance();
 
   int m = (bikeStat.bikeTime / 1000 / 60) % 60;
   int s = (bikeStat.bikeTime / 1000) % 60;
@@ -158,12 +151,13 @@ void BikeDisplay::statScreen2() {
 }
 
 void BikeDisplay::roadScreen() {
-  BikeStat& bikeStat = BikeStat::getInstance();
+
   int x = bikeStat.bikeRevs;
   if (x == lastRoadRevs) return;
 
   display->setRotation(1);
   display->clearDisplay();
+  display->setTextSize(1);
   display->drawFastVLine(0, 0, 110, SSD1306_WHITE);
   display->drawFastVLine(31, 0, 110, SSD1306_WHITE);
 
@@ -180,13 +174,19 @@ void BikeDisplay::roadScreen() {
     writeCenter(String(x1 + 50), y1);
   }
 
+  writeCenter(String(bikeStat.bikeRevs), 120);
   lastRoadRevs = x;
 }
 
+void BikeDisplay::heartScreen() {
+  
+  display->setRotation(1);
+  display->clearDisplay();
+  display->setTextSize(2);
+  writeCenter(String(bikeStat.bikeHR), 50, 2);
+}
 
 void BikeDisplay::levelSetScreen() {
-
-  BikeStat& bikeStat = BikeStat::getInstance();
 
   display->setRotation(1);
   display->clearDisplay();
@@ -239,7 +239,7 @@ void BikeDisplay::drawProgressbarH(int x,int y, int width, int height, int progr
    display->fillRect(x+2, y+height-2-bar, width-4, bar, SSD1306_WHITE);
 }
 
-void BikeDisplay::writeCenter(String text, int ypos) {
-  display->setCursor(16-(text.length()*5/2),ypos);
+void BikeDisplay::writeCenter(String text, int ypos, int size) {
+  display->setCursor(16-(text.length()*(5*size)/2), ypos);
   display->print(text.c_str());
 }

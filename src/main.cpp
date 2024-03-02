@@ -35,7 +35,7 @@ HASensorNumber cadenceSensor("cadence");
 HASensorNumber hRSensor("HRM");
 
 BikeStat* BikeStat::instance = nullptr;
-String BikeStat::bikeRikeVersion = "BikeRike 0.41";
+String BikeStat::bikeRikeVersion = "BikeRike 0.43";
 String BikeStat::bikeHRSensorName = "6076-33"; // Should be set on the webpage !
 
 BikeLED bikeLED;

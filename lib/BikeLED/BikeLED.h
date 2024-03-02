@@ -18,6 +18,8 @@ public:
     void loop();
     void setMode(int mode);
 
+    static uint16_t myFadeOutEffect(void);
+
     static WS2812FX *ws2812fx;
 
 private:
@@ -30,4 +32,5 @@ private:
 
     int revs;
     uint32_t lastRev;
+    uint32_t lastHB;
 };
